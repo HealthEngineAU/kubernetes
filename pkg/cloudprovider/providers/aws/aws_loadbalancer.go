@@ -124,9 +124,18 @@ func (c *Cloud) ensureLoadBalancerv2(namespacedName types.NamespacedName, loadBa
 			createRequest.Scheme = aws.String("internal")
 		}
 
+		var allocationIDs []string
+
+		if eipList, present := annotations["ServiceAnnotationLoadBalancerEIPAllocations"]; present {
+			allocationIDs = strings.Split(eipList, ",")
+			if len(allocationIDs) != len(subnetIDs) {
+				return nil, fmt.Errorf("Error creating load balancer: Must have same number of EIP AllocationIDs (%d) and SubnetIDs (%d)", len(allocationIDs), len(subnetIDs))
+			}
+		}
+
 		// We are supposed to specify one subnet per AZ.
 		// TODO: What happens if we have more than one subnet per AZ?
-		createRequest.SubnetMappings = createSubnetMappings(subnetIDs)
+		createRequest.SubnetMappings = createSubnetMappings(subnetIDs, allocationIDs)
 
 		for k, v := range tags {
 			createRequest.Tags = append(createRequest.Tags, &elbv2.Tag{
@@ -377,6 +386,7 @@ func (c *Cloud) ensureLoadBalancerv2(namespacedName types.NamespacedName, loadBa
 		}
 
 		// Subnets cannot be modified on NLBs
+		// TODO: Add an error if user attempts to modify subnetmappings explicitly
 		if dirty {
 			loadBalancers, err := c.elbv2.DescribeLoadBalancers(
 				&elbv2.DescribeLoadBalancersInput{
@@ -1289,12 +1299,17 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 	return loadBalancer, nil
 }
 
-func createSubnetMappings(subnetIDs []string) []*elbv2.SubnetMapping {
+func createSubnetMappings(subnetIDs []string, allocationIDs []string) []*elbv2.SubnetMapping {
 	response := []*elbv2.SubnetMapping{}
 
-	for _, id := range subnetIDs {
-		// Ignore AllocationId for now
-		response = append(response, &elbv2.SubnetMapping{SubnetId: aws.String(id)})
+	for index, id := range subnetIDs {
+		var sm *elbv2.SubnetMapping
+		if len(allocationIDs) > 0 {
+			sm = &elbv2.SubnetMapping{SubnetId: aws.String(id), AllocationId: aws.String(allocationIDs[index])}
+		} else {
+			sm = &elbv2.SubnetMapping{SubnetId: aws.String(id)}
+		}
+		response = append(response, sm)
 	}
 
 	return response
