@@ -125,8 +125,7 @@ func (c *Cloud) ensureLoadBalancerv2(namespacedName types.NamespacedName, loadBa
 		}
 
 		var allocationIDs []string
-
-		if eipList, present := annotations["ServiceAnnotationLoadBalancerEIPAllocations"]; present {
+		if eipList, present := annotations[ServiceAnnotationLoadBalancerEIPAllocations]; present {
 			allocationIDs = strings.Split(eipList, ",")
 			if len(allocationIDs) != len(subnetIDs) {
 				return nil, fmt.Errorf("Error creating load balancer: Must have same number of EIP AllocationIDs (%d) and SubnetIDs (%d)", len(allocationIDs), len(subnetIDs))
@@ -1303,11 +1302,9 @@ func createSubnetMappings(subnetIDs []string, allocationIDs []string) []*elbv2.S
 	response := []*elbv2.SubnetMapping{}
 
 	for index, id := range subnetIDs {
-		var sm *elbv2.SubnetMapping
+		sm := &elbv2.SubnetMapping{SubnetId: aws.String(id)}
 		if len(allocationIDs) > 0 {
-			sm = &elbv2.SubnetMapping{SubnetId: aws.String(id), AllocationId: aws.String(allocationIDs[index])}
-		} else {
-			sm = &elbv2.SubnetMapping{SubnetId: aws.String(id)}
+			sm.AllocationId = aws.String(allocationIDs[index])
 		}
 		response = append(response, sm)
 	}
