@@ -385,7 +385,6 @@ func (c *Cloud) ensureLoadBalancerv2(namespacedName types.NamespacedName, loadBa
 		}
 
 		// Subnets cannot be modified on NLBs
-		// TODO: Add an error if user attempts to modify subnetmappings explicitly
 		if dirty {
 			loadBalancers, err := c.elbv2.DescribeLoadBalancers(
 				&elbv2.DescribeLoadBalancersInput{
