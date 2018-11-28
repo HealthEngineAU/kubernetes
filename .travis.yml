@@ -3,7 +3,19 @@ language: minimal
 services:
   - docker
 
+before_install:
+  - pip install awscli
+
 script:
   - git checkout v1.12.3
   - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) travis_wait 30 make quick-release
-  - sha512sum _output/release-tars/kubernetes.tar.gz
+  - cd _output/release-tars
+  - tar zxf kubernetes-server-linux-amd64.tar.gz
+
+  # Prepare S3 directory
+  - mkdir -p /tmp/kubernetes/custom-builds/$TRAVIS_BRANCH/bin/linux/amd64
+  - mv kubernetes/server/bin/* /tmp/kubernetes/custom-builds/$TRAVIS_BRANCH/bin/linux/amd64/
+  - for i in $(find /tmp/kubernetes -type f); do shasum $i | cut -f1 -d ' ' > $i.sha1; done
+
+  # Upload to S3
+  - aws s3 sync --acl public-read /tmp/kubernetes s3://$KUBE_BUCKET/kubernetes --quiet
