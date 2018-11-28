@@ -5,5 +5,5 @@ services:
 
 script:
   - git checkout v1.12.3
-  - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) make release
+  - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) make release amd64
   - sha512sum _output/release-tars/kubernetes.tar.gz
