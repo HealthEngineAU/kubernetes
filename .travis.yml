@@ -1,0 +1,9 @@
+language: minimal
+
+services:
+  - docker
+
+script:
+  - git checkout v1.12.3
+  - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) make release
+  - sha512sum _output/release-tars/kubernetes.tar.gz
