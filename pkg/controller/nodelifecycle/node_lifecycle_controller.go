@@ -615,10 +615,14 @@ func (nc *Controller) monitorNodeStatus() error {
 	// We are listing nodes from local cache as we can tolerate some small delays
 	// comparing to state from etcd and there is eventual consistency anyway.
 	nodes, err := nc.nodeLister.List(labels.Everything())
+	glog.Infof("ACAIRE1 - list of nodes: %v", nodes)
+
 	if err != nil {
 		return err
 	}
 	added, deleted, newZoneRepresentatives := nc.classifyNodes(nodes)
+	glog.Infof("ACAIRE2 - added: %v", added)
+	glog.Infof("ACAIRE3 - deleted: %v", deleted)
 
 	for i := range newZoneRepresentatives {
 		nc.addPodEvictorForNewZone(newZoneRepresentatives[i])
@@ -759,6 +763,7 @@ func (nc *Controller) monitorNodeStatus() error {
 
 			// Check with the cloud provider to see if the node still exists. If it
 			// doesn't, delete the node immediately.
+			glog.Infof("ACAIRE7 - nc.cloud: %v", nc.cloud)
 			if currentReadyCondition.Status != v1.ConditionTrue && nc.cloud != nil {
 				// check is node shutdowned, if yes do not deleted it. Instead add taint
 				shutdown, err := nc.nodeShutdownInCloudProvider(context.TODO(), node)
@@ -1127,6 +1132,9 @@ func (nc *Controller) classifyNodes(allNodes []*v1.Node) (added, deleted, newZon
 			deleted = append(deleted, knowSetCopy[i])
 		}
 	}
+	glog.Infof("ACAIRE4 - added: %v", added)
+	glog.Infof("ACAIRE5 - deleted: %v", deleted)
+	glog.Infof("ACAIRE6 - newZoneRepresentatives: %v", newZoneRepresentatives)
 	return
 }
 
