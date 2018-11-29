@@ -745,7 +745,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLBTraffic(actualGroups []*ec2.Se
 						FromPort:   aws.Int64(port),
 						ToPort:     aws.Int64(port),
 						IpProtocol: aws.String("tcp"),
-						IpRanges: &ec2.IpRange{
+						IpRanges: []*ec2.IpRange{
 							CidrIp:      aws.String(cidr),
 							Description: aws.String(clientRuleAnnotation),
 						},
