@@ -595,7 +595,9 @@ func filterForIPRangeDescription(securityGroups []*ec2.SecurityGroup, lbName str
 	return response
 }
 
-func (c *Cloud) getVpcCidrBlock() (*string, error) {
+func (c *Cloud) getVpcCidrBlocks() ([]string, error) {
+	var vpcCidrs []string
+
 	vpcs, err := c.ec2.DescribeVpcs(&ec2.DescribeVpcsInput{
 		VpcIds: []*string{aws.String(c.vpcID)},
 	})
@@ -605,7 +607,10 @@ func (c *Cloud) getVpcCidrBlock() (*string, error) {
 	if len(vpcs.Vpcs) != 1 {
 		return nil, fmt.Errorf("Error querying VPC for ELB, got %d vpcs for %s", len(vpcs.Vpcs), c.vpcID)
 	}
-	return vpcs.Vpcs[0].CidrBlock, nil
+	for _, cidrBlockAssociation := range vpcs.Vpcs[0].CidrBlockAssociationSet {
+		vpcCidrs = append(vpcCidrs, aws.StringValue(cidrBlockAssociation.CidrBlock))
+	}
+	return vpcCidrs, nil
 }
 
 // abstraction for updating SG rules
@@ -681,46 +686,55 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLBTraffic(actualGroups []*ec2.Se
 
 			if clientTraffic {
 				clientRuleAnnotation := fmt.Sprintf("%s=%s", NLBClientRuleDescription, lbName)
-				// Client Traffic
-				permission := &ec2.IpPermission{
-					FromPort:   aws.Int64(port),
-					ToPort:     aws.Int64(port),
-					IpProtocol: aws.String("tcp"),
-				}
-				ranges := []*ec2.IpRange{}
 				for _, cidr := range clientCidrs {
+
+					ranges := []*ec2.IpRange{}
+
+					// Client Traffic
+					permission := &ec2.IpPermission{
+						FromPort:   aws.Int64(port),
+						ToPort:     aws.Int64(port),
+						IpProtocol: aws.String("tcp"),
+					}
+
 					ranges = append(ranges, &ec2.IpRange{
 						CidrIp:      aws.String(cidr),
 						Description: aws.String(clientRuleAnnotation),
 					})
-				}
-				permission.IpRanges = ranges
-				if add {
-					adds = append(adds, permission)
-				} else {
-					removes = append(removes, permission)
+
+					permission.IpRanges = ranges
+
+					if add {
+						adds = append(adds, permission)
+					} else {
+						removes = append(removes, permission)
+					}
 				}
 			} else {
 				healthRuleAnnotation := fmt.Sprintf("%s=%s", NLBHealthCheckRuleDescription, lbName)
-
-				// NLB HealthCheck
-				permission := &ec2.IpPermission{
-					FromPort:   aws.Int64(port),
-					ToPort:     aws.Int64(port),
-					IpProtocol: aws.String("tcp"),
-				}
-				ranges := []*ec2.IpRange{}
 				for _, cidr := range clientCidrs {
+
+					ranges := []*ec2.IpRange{}
+
+					// NLB HealthCheck
+					permission := &ec2.IpPermission{
+						FromPort:   aws.Int64(port),
+						ToPort:     aws.Int64(port),
+						IpProtocol: aws.String("tcp"),
+					}
+
 					ranges = append(ranges, &ec2.IpRange{
 						CidrIp:      aws.String(cidr),
 						Description: aws.String(healthRuleAnnotation),
 					})
-				}
-				permission.IpRanges = ranges
-				if add {
-					adds = append(adds, permission)
-				} else {
-					removes = append(removes, permission)
+
+					permission.IpRanges = ranges
+
+					if add {
+						adds = append(adds, permission)
+					} else {
+						removes = append(removes, permission)
+					}
 				}
 			}
 		}
@@ -818,7 +832,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(mappings []nlbPortMapping, in
 		return nil
 	}
 
-	vpcCidr, err := c.getVpcCidrBlock()
+	vpcCidrs, err := c.getVpcCidrBlocks()
 	if err != nil {
 		return err
 	}
@@ -903,7 +917,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(mappings []nlbPortMapping, in
 	}
 
 	// Run once for health check traffic
-	err = c.updateInstanceSecurityGroupsForNLBTraffic(actualGroups, desiredGroupIds, healthCheckPorts, lbName, []string{aws.StringValue(vpcCidr)}, false)
+	err = c.updateInstanceSecurityGroupsForNLBTraffic(actualGroups, desiredGroupIds, healthCheckPorts, lbName, vpcCidrs, false)
 	if err != nil {
 		return err
 	}
