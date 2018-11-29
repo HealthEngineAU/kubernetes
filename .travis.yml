@@ -13,6 +13,7 @@ install:
   - pip install awscli
 
 script:
+  - git tag $TRAVIS_BRANCH
   - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) travis_wait 30 make quick-release KUBE_BUILD_PLATFORMS=linux/amd64
   - cd _output/release-tars
   - tar zxf kubernetes-server-linux-amd64.tar.gz
