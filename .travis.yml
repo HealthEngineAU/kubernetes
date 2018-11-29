@@ -15,7 +15,7 @@ install:
 script:
   - git checkout $TRAVIS_BRANCH
   - git tag $TRAVIS_BRANCH
-  - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) travis_wait 30 make quick-release KUBE_BUILD_PLATFORMS=linux/amd64
+  - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) travis_wait 30 make quick-release KUBE_BUILD_PLATFORMS=linux/amd64 KUBE_GIT_COMMIT=$TRAVIS_COMMIT
   - cd _output/release-tars
   - tar zxf kubernetes-server-linux-amd64.tar.gz
 
