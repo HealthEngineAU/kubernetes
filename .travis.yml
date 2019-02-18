@@ -1,0 +1,28 @@
+language: python
+
+git:
+  depth: 3
+
+python:
+  - "3.6"
+
+services:
+  - docker
+
+# Skip the install step.
+install: true
+
+script:
+  - git tag $TRAVIS_BRANCH
+  - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) travis_wait 30 make quick-release KUBE_BUILD_PLATFORMS=linux/amd64 KUBE_GIT_COMMIT=$TRAVIS_COMMIT KUBE_GIT_TREE_STATE=clean || travis_terminate 1
+  - cd _output/release-tars || travis_terminate 1
+  - tar zxf kubernetes-server-linux-amd64.tar.gz || travis_terminate 1
+
+  # Prepare S3 directory
+  - mkdir -p /tmp/kubernetes/custom-builds/$TRAVIS_BRANCH/bin/linux/amd64 || travis_terminate 1
+  - mv kubernetes/server/bin/* /tmp/kubernetes/custom-builds/$TRAVIS_BRANCH/bin/linux/amd64/ || travis_terminate 1
+  - for i in $(find /tmp/kubernetes -type f); do shasum $i | cut -f1 -d ' ' > $i.sha1; done || travis_terminate 1
+
+  # Upload to S3
+  - pip install awscli
+  - aws s3 sync --acl public-read /tmp/kubernetes s3://$KUBE_BUCKET/kubernetes --quiet || travis_terminate 1
