@@ -13,7 +13,7 @@ services:
 install: true
 
 script:
-  - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) travis_wait 30 make quick-release KUBE_BUILD_PLATFORMS=linux/amd64 KUBE_GIT_COMMIT=$TRAVIS_COMMIT || travis_terminate 1
+  - SOURCE_DATE_EPOCH=$(git show -s --format=format:%ct HEAD) travis_wait 30 make quick-release KUBE_BUILD_PLATFORMS=linux/amd64 KUBE_GIT_COMMIT=$TRAVIS_COMMIT KUBE_GIT_TREE_STATE=clean || travis_terminate 1
   - cd _output/release-tars || travis_terminate 1
   - tar zxf kubernetes-server-linux-amd64.tar.gz || travis_terminate 1
 
